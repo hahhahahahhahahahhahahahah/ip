@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP Info & Nearby Users</title>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        #info {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        #map {
+            height: 400px;
+            width: 80%;
+            margin: auto;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <h1>Your IP Information & Nearby Users</h1>
+    <p id="info">Fetching...</p>
+    <div id="map"></div>
+
+    <script>
+        async function getIPInfo() {
+            try {
+                let response = await fetch("http://ip-api.com/json/");
+                let data = await response.json();
+
+                if (data.status === "success") {
+                    document.getElementById("info").innerHTML = `
+                        <strong>IP:</strong> ${data.query} <br>
+                        <strong>Country:</strong> ${data.country} (${data.countryCode}) <br>
+                        <strong>Region:</strong> ${data.regionName} <br>
+                        <strong>City:</strong> ${data.city} <br>
+                        <strong>ISP:</strong> ${data.isp} <br>
+                        <strong>Timezone:</strong> ${data.timezone} <br>
+                        <strong>Latitude:</strong> ${data.lat} <br>
+                        <strong>Longitude:</strong> ${data.lon}
+                    `;
+
+                    // Initialize the map
+                    let map = L.map('map').setView([data.lat, data.lon], 10);
+
+                    // Add OpenStreetMap tile layer
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap contributors'
+                    }).addTo(map);
+
+                    // Add marker for user
+                    L.marker([data.lat, data.lon]).addTo(map)
+                        .bindPopup(`📍 Your Location: ${data.city}, ${data.country}`)
+                        .openPopup();
+
+                    // Fetch and display nearby IPs
+                    getNearbyIPs(map, data.lat, data.lon);
+                } else {
+                    document.getElementById("info").innerText = "Failed to retrieve IP info.";
+                }
+            } catch (error) {
+                document.getElementById("info").innerText = "Error fetching IP info.";
+            }
+        }
+
+        async function getNearbyIPs(map, lat, lon) {
+            try {
+                let response = await fetch(`https://ipinfo.io/nearby?token=YOUR_IPINFO_TOKEN`);
+                let data = await response.json();
+
+                if (data.length > 0) {
+                    data.forEach(ip => {
+                        let [ipLat, ipLon] = ip.loc.split(",");
+                        L.marker([parseFloat(ipLat), parseFloat(ipLon)]).addTo(map)
+                            .bindPopup(`📌 Nearby IP: ${ip.ip}<br>${ip.city}, ${ip.country}`);
+                    });
+                }
+            } catch (error) {
+                console.log("Error fetching nearby IPs:", error);
+            }
+        }
+
+        getIPInfo();
+    </script>
+</body>
+</html>
